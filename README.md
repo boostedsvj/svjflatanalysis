@@ -1,6 +1,6 @@
 # SVJ flat analysis
 
-Python-stylex package to analyze ntuples created with TreeMaker.
+Python-style package to analyze ntuples created with TreeMaker.
 
 To be replaced with `coffea.NanoEvents` at some point (see https://github.com/CoffeaTeam/coffea/blob/d5126ca0f5ebc00522d4fc453cb7635fb73b3d9c/coffea/nanoevents/schemas.py#L290 ), but some technical debt has been incurred.
 
