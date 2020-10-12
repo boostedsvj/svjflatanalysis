@@ -1,8 +1,8 @@
 import numpy as np, awkward
 from math import pi
 
-import flatanalysis
-logger = flatanalysis.logger
+import svjflatanalysis
+logger = svjflatanalysis.logger
 
 # ------------------------
 # Event level
@@ -30,10 +30,10 @@ def get_trigger_indices(triggers):
     """
     Maps trigger names as strings to trigger indices as defined in the 'TriggerPass' key
     """
-    trigger_titles = flatanalysis.get_trigger_titles()
+    trigger_titles = svjflatanalysis.get_trigger_titles()
     # Allow a year to be passed
     if triggers in [ 2016, 2017, 2018 ]:
-        triggers = flatanalysis.trigger.get_triggers_for_year(triggers)
+        triggers = svjflatanalysis.trigger.get_triggers_for_year(triggers)
     # Indices of the triggers we want to apply
     trigger_indices = []
     for trigger in triggers:

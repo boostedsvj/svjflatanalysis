@@ -1,4 +1,4 @@
-import flatanalysis
+import svjflatanalysis
 import numpy as np, math, uuid
 import coffea.hist
 
@@ -29,8 +29,8 @@ def roccurve(signals, bkgs, cut_function, cut_values):
     Expects a list of signals and a list of bkgs (Dataset objects),
     and a cut_function and cut_values.
     """
-    eff_sig, n_pass_sig, n_total_sig = get_eff(flatanalysis.iterate(signals), cut_function, cut_values)
-    eff_bkg, n_pass_bkg, n_total_bkg = get_eff(flatanalysis.iterate(bkgs), cut_function, cut_values)
+    eff_sig, n_pass_sig, n_total_sig = get_eff(svjflatanalysis.iterate(signals), cut_function, cut_values)
+    eff_bkg, n_pass_bkg, n_total_bkg = get_eff(svjflatanalysis.iterate(bkgs), cut_function, cut_values)
     return eff_sig, eff_bkg, n_pass_sig, n_pass_bkg, n_total_sig, n_total_bkg
 
 def _draw_roccurve(eff_sig, eff_bkg, cut_values, ax):
@@ -87,7 +87,7 @@ def plot_roccurves_per_bkg(signals, bkgs, cut_function, cut_values, ax=None):
         fig = plt.figure(figsize=(8,8))
         ax = fig.gca()
     # Get signal efficieny once
-    eff_sig, n_pass_sig, n_total_sig = get_eff(flatanalysis.iterate(signals), cut_function, cut_values)
+    eff_sig, n_pass_sig, n_total_sig = get_eff(svjflatanalysis.iterate(signals), cut_function, cut_values)
     # Perform some basic plotting setup
     ax.plot([0.0,1.0], [0.0,1.0], linestyle='--', color='xkcd:gray')
     ax.set_xlim(0.0, 1.05)
@@ -103,7 +103,7 @@ def plot_roccurves_per_bkg(signals, bkgs, cut_function, cut_values, ax=None):
         # Get Datasets that have this category
         bkgs_this_cat = [ b for b in bkgs if b.get_category() == bkg_cat ]
         # Compute efficiency in this category
-        eff_bkg, n_pass_bkg, n_total_bkg = get_eff(flatanalysis.iterate(bkgs_this_cat), cut_function, cut_values)
+        eff_bkg, n_pass_bkg, n_total_bkg = get_eff(svjflatanalysis.iterate(bkgs_this_cat), cut_function, cut_values)
         # Draw roccurve for this category
         line = _draw_roccurve(eff_sig, eff_bkg, cut_values, ax)
         line.set_label(bkg_cat)
@@ -127,12 +127,12 @@ def plot_multiple_signals_per_bkg(signals, bkgs, cut_function, cut_values, title
     sig_effs = {}
     for cat in sig_categories:
         sigs_this_cat = [ s for s in signals if s.get_category() == cat]
-        eff_sig, n_pass_sig, n_total_sig = get_eff(flatanalysis.iterate(sigs_this_cat), cut_function, cut_values)
+        eff_sig, n_pass_sig, n_total_sig = get_eff(svjflatanalysis.iterate(sigs_this_cat), cut_function, cut_values)
         sig_effs[cat] = eff_sig
     bkg_effs = {}
     for cat in bkg_categories:
         bkgs_this_cat = [ b for b in bkgs if b.get_category() == cat]
-        eff_bkg, n_pass_bkg, n_total_bkg = get_eff(flatanalysis.iterate(bkgs_this_cat), cut_function, cut_values)
+        eff_bkg, n_pass_bkg, n_total_bkg = get_eff(svjflatanalysis.iterate(bkgs_this_cat), cut_function, cut_values)
         bkg_effs[cat] = eff_bkg
     # Do the plots in subplots, 1 per signal category
     lines = []
@@ -214,7 +214,7 @@ class Hist(object):
             self.hist.fill(category=cat, weight=dataset.get_weight(), **{self.varname: get_array(arrays)})
 
     def plot(self, ax=None, **plot_options):
-        if ax is None: ax = flatanalysis.utils.get_ax()
+        if ax is None: ax = svjflatanalysis.utils.get_ax()
         coffea.hist.plot1d(self.hist, ax=ax, **plot_options)
 
 
@@ -333,7 +333,7 @@ def apply_trigger_first(cut_fn):
     Decorator for post-trigger cuts
     """
     def wrapped(arrays, cut):
-        arrays = flatanalysis.arrayutils.apply_trigger_and_jetpt550(arrays, 2018)
+        arrays = svjflatanalysis.arrayutils.apply_trigger_and_jetpt550(arrays, 2018)
         return cut_fn(arrays, cut)
     return wrapped
 

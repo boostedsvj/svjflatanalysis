@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 from time import strftime
 import os.path as osp, os
-import flatanalysis
-logger = flatanalysis.logger
+import svjflatanalysis
+logger = svjflatanalysis.logger
 
 def get_ax(**kwargs):
     import matplotlib.pyplot as plt

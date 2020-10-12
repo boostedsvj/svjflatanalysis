@@ -1,5 +1,5 @@
-import flatanalysis
-logger = flatanalysis.logger
+import svjflatanalysis
+logger = svjflatanalysis.logger
 
 import numpy as np, os, os.path as osp
 import matplotlib.pyplot as plt, mplhep
@@ -25,7 +25,7 @@ def trigger_efficiency(datasets, triggers, cut_function, cut_values):
     `cut_values` should be a list for which `cut_function` should be evaluated.
     """
     # If a single dataset was passed, turn it into a list
-    if isinstance(datasets, flatanalysis.Dataset): datasets = [datasets]
+    if isinstance(datasets, svjflatanalysis.Dataset): datasets = [datasets]
     # Allow `triggers` argument to be a year
     try:
         year = int(triggers)
@@ -39,9 +39,9 @@ def trigger_efficiency(datasets, triggers, cut_function, cut_values):
         pass
     n_pass = np.zeros(len(cut_values))
     n_total = np.zeros(len(cut_values))
-    for arrays, dataset in flatanalysis.iterate(datasets):
+    for arrays, dataset in svjflatanalysis.iterate(datasets):
         for i, cut_value in enumerate(cut_values):
-            n_pass_this, n_total_this = flatanalysis.arrayutils.count_triggers(
+            n_pass_this, n_total_this = svjflatanalysis.arrayutils.count_triggers(
                 cut_function(arrays, cut_value), triggers
                 )
             n_pass[i] += n_pass_this * dataset.get_weight()
@@ -58,8 +58,8 @@ def plot_trigger_efficiency(
     triggers=None,
     **plot_options
     ):
-    if ax is None: ax = flatanalysis.utils.get_ax()
-    if color is None: color = flatanalysis.utils.get_default_color()
+    if ax is None: ax = svjflatanalysis.utils.get_ax()
+    if color is None: color = svjflatanalysis.utils.get_default_color()
     line = ax.plot(cut_values, eff, **dict(color=color, marker='.', linewidth=0, **plot_options))[0]
     if label: line.set_label(label)
     ax.set_xlabel(cut_title)
@@ -185,7 +185,7 @@ htcut_values = np.linspace(0., 1250., 60)
 ht_title = 'HT (GeV)'
 
 def jetptselection(arrays, cut_value):
-    if flatanalysis.arrayutils.is_nested(arrays):
+    if svjflatanalysis.arrayutils.is_nested(arrays):
         passes = (arrays[b'JetsAK15_leading'].pt > cut_value).any()
     else:
         passes = (arrays[b'JetsAK15_leading.fCoordinates.fPt'] > cut_value).any()
@@ -231,22 +231,22 @@ def get_cut_fn_and_vals(variable):
 def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
     """
     """
-    flatanalysis.utils.reset_color()
+    svjflatanalysis.utils.reset_color()
     import re
     if not signals:
         logger.info('Recaching signals')
-        signals = flatanalysis.samples.init_sigs_nohtcut(year, max_entries=None, progressbar=True)
+        signals = svjflatanalysis.samples.init_sigs_nohtcut(year, max_entries=None, progressbar=True)
 
     cut_function, cut_values, cut_title = get_cut_fn_and_vals(variable)
 
-    ax = flatanalysis.utils.get_ax()
+    ax = svjflatanalysis.utils.get_ax()
 
     for i_signal, signal in enumerate(signals):
         mass = int(re.search(r'\d+', signal.name).group())
         logger.info('Processing mz = %s', mass)
-        eff, _, _ = flatanalysis.trigger.trigger_efficiency(signal, year, cut_function, cut_values)
+        eff, _, _ = svjflatanalysis.trigger.trigger_efficiency(signal, year, cut_function, cut_values)
 
-        flatanalysis.trigger.plot_trigger_efficiency(
+        svjflatanalysis.trigger.plot_trigger_efficiency(
             cut_values, eff,
             label=r'$m_{{Z\prime}}={}$ GeV'.format(mass),
             cut_title=cut_title,
@@ -254,7 +254,7 @@ def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
             include_percentile_calc=(i_signal==0), # Perc calc only for the first one (lowest mass)
             include_legend=(i_signal==len(signals)-1), # Legend only on last step
             ax=ax,
-            triggers=flatanalysis.trigger.get_triggers_for_year(year)
+            triggers=svjflatanalysis.trigger.get_triggers_for_year(year)
             )
 
     ax = mplhep.cms.cmslabel(data=False, paper=False, year=str(year), ax=ax, fontsize=22)
@@ -262,7 +262,7 @@ def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
     if notebook:
         return ax
     else:
-        path = flatanalysis.utils.make_plotdir('trigger_plots_%d')
+        path = svjflatanalysis.utils.make_plotdir('trigger_plots_%d')
         plt.savefig(osp.join(path, '{}_{}.pdf'.format(year, variable)))
         plt.savefig(osp.join(path, '{}_{}.png'.format(year, variable)))
 
@@ -270,24 +270,24 @@ def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
 def trigger_plots_for_bkg(year, variable, bkgs=None, notebook=False):
     """
     """
-    flatanalysis.utils.reset_color()
+    svjflatanalysis.utils.reset_color()
     import re
     if not bkgs:
         logger.info('Recaching bkgs')
-        bkgs = flatanalysis.samples.init_bkgs_limited(progressbar=True)
+        bkgs = svjflatanalysis.samples.init_bkgs_limited(progressbar=True)
 
     cut_function, cut_values, cut_title = get_cut_fn_and_vals(variable)
 
-    ax = flatanalysis.utils.get_ax()
+    ax = svjflatanalysis.utils.get_ax()
 
     bkg_cats = list(set([b.get_category() for b in bkgs]))
     bkg_cats.sort()
     for i_bkg, bkg_cat in enumerate(bkg_cats):
         bkg_datasets_this_cat = [b for b in bkgs if b.get_category() == bkg_cat]
 
-        eff, _, _ = flatanalysis.trigger.trigger_efficiency(bkg_datasets_this_cat, year, cut_function, cut_values)
+        eff, _, _ = svjflatanalysis.trigger.trigger_efficiency(bkg_datasets_this_cat, year, cut_function, cut_values)
 
-        flatanalysis.trigger.plot_trigger_efficiency(
+        svjflatanalysis.trigger.plot_trigger_efficiency(
             cut_values, eff,
             label=bkg_datasets_this_cat[0].get_title(),
             cut_title=cut_title,
@@ -295,7 +295,7 @@ def trigger_plots_for_bkg(year, variable, bkgs=None, notebook=False):
             include_percentile_calc=(i_bkg==0), # Perc calc only for the first one (lowest mass)
             include_legend=(i_bkg==len(bkg_cats)-1), # Legend only on last step
             ax=ax,
-            triggers=flatanalysis.trigger.get_triggers_for_year(year)
+            triggers=svjflatanalysis.trigger.get_triggers_for_year(year)
             )
 
     ax = mplhep.cms.cmslabel(data=False, paper=False, year=str(year), ax=ax, fontsize=22)
@@ -303,6 +303,6 @@ def trigger_plots_for_bkg(year, variable, bkgs=None, notebook=False):
     if notebook:
         return ax
     else:
-        path = flatanalysis.utils.make_plotdir('trigger_plots_%d')
+        path = svjflatanalysis.utils.make_plotdir('trigger_plots_%d')
         plt.savefig(osp.join(path, 'bkg_{}_{}.pdf'.format(year, variable)))
         plt.savefig(osp.join(path, 'bkg_{}_{}.png'.format(year, variable)))

@@ -5,8 +5,8 @@ List of datasets currently being analyzed
 import os.path as osp
 import seutils
 
-import flatanalysis
-logger = flatanalysis.logger
+import svjflatanalysis
+logger = svjflatanalysis.logger
 
 # ______________________________________________________________________
 # Signal
@@ -62,7 +62,7 @@ def init_sig_ht1000(mz, **kwargs):
         .format(int(mz))
         )
     if not 'max_entries' in kwargs: kwargs['max_entries'] = None
-    signal = flatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
+    signal = svjflatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
     signal.xs = SIGNAL_CROSSSECTIONS[mz] # * HT1000_EFFICIENCIES[mz]
     return signal
 
@@ -77,8 +77,8 @@ def init_sig_2018_nohtcut(mz, **kwargs):
         .format(int(mz))
         )
     if not 'max_entries' in kwargs: kwargs['max_entries'] = None
-    kwargs['branches'] = kwargs.get('branches', []) + flatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True, old_style=True)
-    signal = flatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True, old_style=True)
+    signal = svjflatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
     signal.xs = SIGNAL_CROSSSECTIONS[mz]
     return signal
 
@@ -88,8 +88,8 @@ def init_sig_2017_nohtcut(mz, **kwargs):
         'root://cmseos.fnal.gov//store/user/lpcsusyhad/SVJ2017/boosted/treemaker/nohtcut_year2017/*mz{}*/*.root'
         .format(int(mz))
         )
-    kwargs['branches'] = kwargs.get('branches', []) + flatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
-    signal = flatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
+    signal = svjflatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
     signal.xs = SIGNAL_CROSSSECTIONS[mz]
     return signal
 
@@ -99,8 +99,8 @@ def init_sig_2016_nohtcut(mz, **kwargs):
         'root://cmseos.fnal.gov//store/user/lpcsusyhad/SVJ2017/boosted/treemaker/nohtcut_year2016/*mz{}*/*.root'
         .format(int(mz))
         )
-    kwargs['branches'] = kwargs.get('branches', []) + flatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
-    signal = flatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
+    signal = svjflatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
     signal.xs = SIGNAL_CROSSSECTIONS[mz]
     return signal
 
@@ -125,9 +125,9 @@ def init_sig_jetpt250(mz, year, **kwargs):
         'root://cmseos.fnal.gov//store/user/lpcsusyhad/SVJ2017/boosted/treemaker/jetpt250*mz{}*year{}*/*.root'
         .format(int(mz), year)
         )
-    kwargs['branches'] = kwargs.get('branches', []) + flatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
     if not 'max_entries' in kwargs: kwargs['max_entries'] = None
-    signal = flatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
+    signal = svjflatanalysis.dataset.SignalDataset(name, rootfiles, **kwargs)
     signal.xs = SIGNAL_CROSSSECTIONS_PYTHIA_SARA[mz]
     return signal
 
@@ -207,7 +207,7 @@ def init_bkg(name, **kwargs):
     """
     belongs = lambda rootfile: osp.basename(rootfile).startswith(name)
     rootfiles = [ rootfile for rootfile in get_bkg_rootfiles() if belongs(rootfile) ]
-    return flatanalysis.dataset.BackgroundDataset(name, rootfiles, **kwargs)
+    return svjflatanalysis.dataset.BackgroundDataset(name, rootfiles, **kwargs)
 
 def init_ttjets(**kwargs):
     return [ init_bkg(name, **kwargs) for name in ttjets ]
@@ -235,5 +235,5 @@ def init_ttjets_test(**kwargs):
     """
     rootfiles = [ rootfile for rootfile in get_bkg_rootfiles() if osp.basename(rootfile).startswith(ttjets[0]) ][:1]
     kwargs.update(make_cache=True, max_entries=50)
-    return flatanalysis.dataset.BackgroundDataset('ttjets_testsample', rootfiles, **kwargs)
+    return svjflatanalysis.dataset.BackgroundDataset('ttjets_testsample', rootfiles, **kwargs)
 

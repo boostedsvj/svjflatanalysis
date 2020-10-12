@@ -1,8 +1,8 @@
 # import uproot4 as uproot
 import uproot, re
-import flatanalysis
-logger = flatanalysis.logger
-tqdm = flatanalysis.tqdm
+import svjflatanalysis
+logger = svjflatanalysis.logger
+tqdm = svjflatanalysis.tqdm
 
 # ______________________________________________________________________
 # arrays-level helpers
@@ -59,7 +59,7 @@ class Dataset(object):
     def __init__(self, rootfiles, make_cache=True, **kwargs):
         # logger.debug('Initializing dataset with rootfiles: %s', rootfiles)
         super().__init__()
-        self.rootfiles = [rootfiles] if flatanalysis.utils.is_string(rootfiles) else rootfiles
+        self.rootfiles = [rootfiles] if svjflatanalysis.utils.is_string(rootfiles) else rootfiles
         if len(self.rootfiles) == 0:
             logger.warning('No rootfiles for %s; iterators will be empty', self)
             make_cache = False
@@ -117,19 +117,19 @@ class Dataset(object):
         branches = None
         for arrays in self.iterate(use_cache=False, **kwargs):
             if branches is None: branches = list(arrays.keys())
-            numentries = flatanalysis.arrayutils.numentries(arrays)
+            numentries = svjflatanalysis.arrayutils.numentries(arrays)
             if max_entries and self.numentries_cache + numentries > max_entries:
                 # Cut away some entries to get to max_entries
                 needed_entries = max_entries - self.numentries_cache
                 arrays = { k : v[:needed_entries] for k, v in arrays.items() }
             self.cache.append(arrays)
             self.sizeof_cache += sum([ v.nbytes for v in arrays.values() ])
-            self.numentries_cache += flatanalysis.arrayutils.numentries(arrays)
+            self.numentries_cache += svjflatanalysis.arrayutils.numentries(arrays)
             if max_entries and self.numentries_cache >= max_entries:
                 break
         logger.info(
             'Cached ~%s (%s entries, %s branches) for %s',
-            flatanalysis.utils.bytes_to_human_readable(self.sizeof_cache), self.numentries_cache, len(branches), self
+            svjflatanalysis.utils.bytes_to_human_readable(self.sizeof_cache), self.numentries_cache, len(branches), self
             )
 
     def clear_cache(self):
@@ -183,15 +183,15 @@ def basic_svj_analysis_branches(arrays):
     """
     Standard analysis array operations that we want to run basically always
     """
-    flatanalysis.arrayutils.filter_zerojet_events(arrays)
-    flatanalysis.arrayutils.get_leading_and_subleading_jet(arrays)
-    flatanalysis.arrayutils.get_jet_closest_to_met(arrays)
-    # flatanalysis.arrayutils.get_summedsoftdropsubjets(arrays)
-    flatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15')
-    flatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_leading')
-    flatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_subleading')
-    flatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_closest')
-    flatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_subclosest')
+    svjflatanalysis.arrayutils.filter_zerojet_events(arrays)
+    svjflatanalysis.arrayutils.get_leading_and_subleading_jet(arrays)
+    svjflatanalysis.arrayutils.get_jet_closest_to_met(arrays)
+    # svjflatanalysis.arrayutils.get_summedsoftdropsubjets(arrays)
+    svjflatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15')
+    svjflatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_leading')
+    svjflatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_subleading')
+    svjflatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_closest')
+    svjflatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_subclosest')
 
 class SVJDataset(Dataset):
     """
@@ -250,7 +250,7 @@ class BackgroundDataset(SVJDataset):
         if hasattr(self, 'xs'): return self.xs
         datasetname = self.name.split('.', 1)[1]
         if '_ext' in datasetname: datasetname = datasetname.split('_ext')[0]
-        self.xs = flatanalysis.crosssections.get_xs(datasetname)
+        self.xs = svjflatanalysis.crosssections.get_xs(datasetname)
         if self.xs is None:
             raise RuntimeError('No cross section for {0}'.format(self.name))
         return self.xs
