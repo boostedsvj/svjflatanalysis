@@ -16,6 +16,7 @@ pip install uproot
 python -m pip install matplotlib
 conda install -c conda-forge tqdm 
 pip install mplhep
+pip install coffea
 ```
 
 Then install this package:
