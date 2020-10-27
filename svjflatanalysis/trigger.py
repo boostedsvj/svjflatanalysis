@@ -1,3 +1,4 @@
+from __future__ import print_function
 import svjflatanalysis
 logger = svjflatanalysis.logger
 
@@ -18,11 +19,16 @@ def inverse_exp_fit_fn(y, a, b, c, d, x_guess=0.):
 
 def trigger_efficiency(datasets, triggers, cut_function, cut_values):
     """
-    Calculates the combined trigger efficiency for a list of trigger titles over
-    a list of datasets.
-    `cut_function` should be a function that takes `arrays`, and returns the number
-    of entries that pass according to this function and the total number of events.
-    `cut_values` should be a list for which `cut_function` should be evaluated.
+    Calculates the trigger efficiency for a set of triggers PLUS a cut.
+    Returns the 'total number of events that pass the cut AND trigger' over the 
+    'total number of events that pass just the cut'.
+    Also returns the plain numbers.
+    
+    `cut_function` should be a function that takes two arguments, `arrays` and
+    `cut_value`, and should return an event-level selection (boolean array).
+    
+    `cut_values` should be a list of values for which the cut_function should be
+    repeated.
     """
     # If a single dataset was passed, turn it into a list
     if isinstance(datasets, svjflatanalysis.Dataset): datasets = [datasets]
@@ -37,18 +43,22 @@ def trigger_efficiency(datasets, triggers, cut_function, cut_values):
                 )
     except ValueError:
         pass
-    n_pass = np.zeros(len(cut_values))
+    # Prepare output arrays and loop
+    n_pass_cut_and_trigger = np.zeros(len(cut_values))
+    n_pass_just_cut = np.zeros(len(cut_values))
     n_total = np.zeros(len(cut_values))
     for arrays, dataset in svjflatanalysis.iterate(datasets):
+        # First count plain number of events (weighted)
+        n_total += svjflatanalysis.arrayutils.numentries(arrays) * dataset.get_weight()
         for i, cut_value in enumerate(cut_values):
-            n_pass_this, n_total_this = svjflatanalysis.arrayutils.count_triggers(
-                cut_function(arrays, cut_value), triggers
+            # Get boolean selection
+            selection = cut_function(arrays, cut_value)
+            n_pass_just_cut[i] += selection.sum() * dataset.get_weight()
+            n_pass_cut_and_trigger[i] += (
+                svjflatanalysis.arrayutils.count_triggers(arrays[b'TriggerPass'][selection], triggers)
+                * dataset.get_weight()
                 )
-            n_pass[i] += n_pass_this * dataset.get_weight()
-            n_total[i] += n_total_this * dataset.get_weight()
-    # Divide with safeguard for division by zero
-    eff = np.divide(n_pass, n_total, out=np.zeros_like(n_pass), where=n_total>0.)
-    return eff, n_pass, n_total
+    return n_pass_cut_and_trigger, n_pass_just_cut, n_total
 
 def plot_trigger_efficiency(
     cut_values, eff, cut_title='cut value', ax=None, label=None, color=None,
@@ -177,42 +187,33 @@ def get_triggers_for_year(year):
 # ________________________________________________________
 # Common cuts
 
-def htselection(arrays, cut_value):
-    return arrays[b'HT'] >= cut_value
 def htcut(arrays, cut_value):
-    return arrays[b'TriggerPass'][htselection(arrays, cut_value)]
+    return arrays[b'HT'] >= cut_value
 htcut_values = np.linspace(0., 1250., 60)
 ht_title = 'HT (GeV)'
 
-def jetptselection(arrays, cut_value):
+def jetptcut(arrays, cut_value):
     if svjflatanalysis.arrayutils.is_nested(arrays):
         passes = (arrays[b'JetsAK15_leading'].pt > cut_value).any()
     else:
         passes = (arrays[b'JetsAK15_leading.fCoordinates.fPt'] > cut_value).any()
     return passes
-def jetptcut(arrays, cut_value):
-    return arrays[b'TriggerPass'][jetptselection(arrays, cut_value)]
 jetptcut_values = np.linspace(0., 750., 60)
+jetptcut_values = np.sort(np.concatenate((jetptcut_values, np.array([500., 550.])))) # Ensure 500 and 550 are in the list
 jetpt_title = r'$p^{jet}_{T}$ (GeV)'
 
-def mtselection(arrays, cut_value):
-    return (arrays[b'JetsAK15_MT'] > cut_value).any()
 def mtcut(arrays, cut_value):
-    return arrays[b'TriggerPass'][mtselection(arrays, cut_value)]
+    return (arrays[b'JetsAK15_MT'] > cut_value).any()
 mtcut_values = np.linspace(0., 1500., 60)
 mt_title = r'$M_{T}$ (GeV)'
 
-def metselection(arrays, cut_value):
-    return arrays[b'MET'] > cut_value
 def metcut(arrays, cut_value):
-    return arrays[b'TriggerPass'][metselection(arrays, cut_value)]
+    return arrays[b'MET'] > cut_value
 metcut_values = np.linspace(0., 700., 50)
 met_title = r'$MET$ (GeV)'
 
-def msdselection(arrays, cut_value):
-    return (arrays[b'JetsAK15_softDropMass'] > cut_value).any()
 def msdcut(arrays, cut_value):
-    return arrays[b'TriggerPass'][msdselection(arrays, cut_value)]
+    return (arrays[b'JetsAK15_softDropMass'] > cut_value).any()
 msdcut_values = np.linspace(0., 700., 60)
 msd_title = r'$M_{SD}$ (GeV)'
 
@@ -227,6 +228,50 @@ def get_cut_fn_and_vals(variable):
 
 # ________________________________________________________
 # Final plot production functions
+
+def trigger_plots_plain_efficiency_jetpt(year, datasets, is_signal=True):
+    import re
+    svjflatanalysis.utils.reset_color()
+    cut_function, cut_values, cut_title = svjflatanalysis.trigger.get_cut_fn_and_vals('jetpt')
+    ax = svjflatanalysis.utils.get_ax()
+    for dataset in datasets:
+        # Setup
+        color = svjflatanalysis.utils.get_default_color()
+        # Get the trigger counts
+        n_pass_cut_and_trigger, n_pass_just_cut, n_total = svjflatanalysis.trigger.trigger_efficiency(
+            dataset, year, cut_function, cut_values
+            )
+        eff = svjflatanalysis.arrayutils.safe_divide(n_pass_cut_and_trigger, n_total)
+        # Plot
+        if is_signal:
+            mass = int(re.search(r'\d+', dataset.name).group())
+            label = r'$m_{{Z\prime}}={}$ GeV'.format(mass)
+        else:
+            label = dataset.get_category()
+        ax.plot(cut_values, eff, color=color, label)
+        eff0 = eff[0]
+        eff550 = eff[cut_values == 550.][0]
+        ax.plot([0., 550.], [eff0, eff550], marker='o', color=color, linewidth=0)
+        ax.text(
+            0, eff0, '{:.6f}'.format(eff0),
+            verticalalignment='bottom', horizontalalignment='left', fontsize=16, color=color
+            )
+        ax.text(
+            550., eff550, '{:.6f}'.format(eff550),
+            verticalalignment='bottom', horizontalalignment='left', fontsize=16, color=color
+            )
+        logger.info('%s: bare trigger eff: %s , trigger+550cut: %s', dataset.name, eff0, eff550)
+    # Some bellification
+    ax.set_xlabel(cut_title)
+    ax.set_ylabel('Trigger efficiency')
+    label_fn = mplhep.cms.cmslabel if hasattr(mplhep.cms, 'cmslabel') else mplhep.cms.label
+    label_fn(data=False, paper=False, year=str(year), ax=ax, fontsize=22)
+    ax.legend()
+    # Adjust axes slightly
+    ylim = ax.get_ylim()
+    ax.set_ylim(0., ylim[1]*1.05)
+    ax.set_xlim(0., 1000.)
+
 
 def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
     """
@@ -244,8 +289,10 @@ def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
     for i_signal, signal in enumerate(signals):
         mass = int(re.search(r'\d+', signal.name).group())
         logger.info('Processing mz = %s', mass)
-        eff, _, _ = svjflatanalysis.trigger.trigger_efficiency(signal, year, cut_function, cut_values)
-
+        n_pass_cut_and_trigger, n_pass_just_cut, n_total = svjflatanalysis.trigger.trigger_efficiency(
+            signal, year, cut_function, cut_values
+            )
+        eff = svjflatanalysis.arrayutils.safe_divide(n_pass_cut_and_trigger, n_pass_just_cut)
         svjflatanalysis.trigger.plot_trigger_efficiency(
             cut_values, eff,
             label=r'$m_{{Z\prime}}={}$ GeV'.format(mass),
@@ -257,7 +304,8 @@ def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
             triggers=svjflatanalysis.trigger.get_triggers_for_year(year)
             )
 
-    ax = mplhep.cms.cmslabel(data=False, paper=False, year=str(year), ax=ax, fontsize=22)
+    label_fn = mplhep.cms.cmslabel if hasattr(mplhep.cms, 'cmslabel') else mplhep.cms.label
+    ax = label_fn(data=False, paper=False, year=str(year), ax=ax, fontsize=22)
 
     if notebook:
         return ax

@@ -4,6 +4,13 @@ from math import pi
 import svjflatanalysis
 logger = svjflatanalysis.logger
 
+
+def safe_divide(a, b):
+    """
+    Returns a/b, but puts 0 where b==0
+    """
+    return np.divide(a, b, out=np.zeros_like(a), where=b>0.)
+
 # ------------------------
 # Event level
 
@@ -49,7 +56,7 @@ def get_trigger_indices(triggers):
 
 def passed_trigger(arrays, triggers, trigger_pass_branch=b'TriggerPass'):
     """
-    Returns a boolean array, True of the event passed the given triggers or False if not
+    Returns a boolean array, True if the event passed the given triggers or False if not
     """
     trigger_indices = get_trigger_indices(triggers)
     # Check, per event, if any of the triggers we want equals 1
@@ -88,13 +95,13 @@ def apply_trigger_and_jetpt550(arrays, triggers=2018, return_counts=False):
 
 def count_triggers(trigger_decisions, triggers):
     """
-    Counts passed / total of a particular array of trigger decisions
+    Counts the number of events that pass a trigger
     """
     trigger_indices = get_trigger_indices(triggers)
     passes = (trigger_decisions[:,trigger_indices] == 1).any(axis=1)
-    n_total = trigger_decisions.shape[0]
+    # n_total = trigger_decisions.shape[0]
     n_pass = passes.nonzero()[0].shape[0]
-    return n_pass, n_total
+    return n_pass #, n_total
 
 def filter_zerojet_events(arrays, inplace=True):
     jets = get_jets(arrays, b'JetsAK15')

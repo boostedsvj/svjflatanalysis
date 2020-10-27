@@ -55,6 +55,22 @@ GENJET250_EFFICIENCIES = {
     250 : 0.0088,
     }
 
+
+NOCUTS_TRIGGER_EFF = {
+    150 : 0.0004792296242839746,
+    250 : 0.0014670666229739606,
+    450 : 0.005050597137387183,
+    650 : 0.012032736120327363,
+    }
+
+NOCUTS_TRIGGER_PLUS_JETPT550_EFF = {
+    150 : 0.0001465878850750981,
+    250 : 0.0005797685967079227,
+    450 : 0.002224450724769806,
+    650 : 0.005264322052643222,
+    }
+
+
 def init_sig_ht1000(mz, **kwargs):
     name = 'mz' + str(mz)
     rootfiles = seutils.ls_wildcard(
@@ -115,6 +131,24 @@ def init_sigs_2016_nohtcut(**kwargs):
 
 def init_sigs_nohtcut(year, **kwargs):
     return globals()['init_sigs_{}_nohtcut'.format(year)](**kwargs)
+
+
+# ______________________________________________________________________
+# Triggered samples
+
+triggered_path = 'root://cmseos.fnal.gov//store/user/lpcsusyhad/SVJ2017/boosted/treemaker/triggered_and_jetpt550'
+def init_sig_triggered(year, mz, **kwargs):
+    rootfiles = [osp.join(triggered_path, 'year{}_mz{}.root'.format(year, mz))]
+    assert seutils.isfile(rootfiles[0])
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
+    signal = svjflatanalysis.dataset.SignalDataset('mz{}_year{}'.format(mz, year), rootfiles, treename='PreSelection', **kwargs)
+    signal.xs = SIGNAL_CROSSSECTIONS[mz] * NOCUTS_TRIGGER_PLUS_JETPT550_EFF[mz]
+    return signal
+    
+def init_sigs_triggered(year, **kwargs):
+    return [init_sig_triggered(year, mz, **kwargs) for mz in [150, 250]]
+
+
 
 # ______________________________________________________________________
 # genjet250 samples

@@ -64,6 +64,8 @@ class Dataset(object):
             logger.warning('No rootfiles for %s; iterators will be empty', self)
             make_cache = False
         self.cache = []
+        if 'treename' in kwargs:
+            self.treename = kwargs.pop('treename')
         if make_cache:
             self.make_cache(**kwargs)
 
@@ -127,9 +129,14 @@ class Dataset(object):
             self.numentries_cache += svjflatanalysis.arrayutils.numentries(arrays)
             if max_entries and self.numentries_cache >= max_entries:
                 break
+        if branches is None:
+            logger.error('Did not make cache - no arrays to loop over')
         logger.info(
             'Cached ~%s (%s entries, %s branches) for %s',
-            svjflatanalysis.utils.bytes_to_human_readable(self.sizeof_cache), self.numentries_cache, len(branches), self
+            svjflatanalysis.utils.bytes_to_human_readable(self.sizeof_cache),
+            self.numentries_cache,
+            '?' if branches is None else len(branches),
+            self
             )
 
     def clear_cache(self):
