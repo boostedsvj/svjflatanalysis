@@ -34,6 +34,7 @@ else:
 
 from . import utils
 from . import arrayutils
+from . import crosssections
 from . import dataset
 from .dataset import (
     Dataset,
@@ -46,7 +47,6 @@ from .dataset import (
 from . import samples
 from . import roccurve
 from . import trigger
-from . import crosssections
 
 # Default plotting params
 import matplotlib.pyplot as plt

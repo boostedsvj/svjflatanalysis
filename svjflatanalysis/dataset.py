@@ -23,6 +23,16 @@ def iterate_events(arrays):
     for i in range(n):
         yield { k : v[i:i+1] for k, v in arrays.items() }
 
+def group_per_category(bkgs):
+    """
+    Groups a flat list of datasets into sublists with the same category
+    E.g. [ ttjet, ttjet, ttjet, qcd, qcd ] --> [ [ttjet, ttjet, ttjet], [qcd, qcd] ]
+    """
+    cats = list(set(bkg.get_category() for bkg in bkgs))
+    cats.sort()
+    return [ [ b for b in bkgs if b.get_category() == cat ] for cat in cats ]
+
+
 # ______________________________________________________________________
 # Operators for list of datasets
 

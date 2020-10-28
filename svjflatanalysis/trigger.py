@@ -229,6 +229,22 @@ def get_cut_fn_and_vals(variable):
 # ________________________________________________________
 # Final plot production functions
 
+def get_trigger_plain_efficiency_jetpt(year, datasets, is_signal=True):
+    cut_function, _, cut_title = svjflatanalysis.trigger.get_cut_fn_and_vals('jetpt')
+    cut_values = [ 0., 550. ]
+    result = []
+    for dataset in datasets:
+        # Setup
+        color = svjflatanalysis.utils.get_default_color()
+        # Get the trigger counts
+        n_pass_cut_and_trigger, n_pass_just_cut, n_total = svjflatanalysis.trigger.trigger_efficiency(
+            dataset, year, cut_function, cut_values
+            )
+        eff = svjflatanalysis.arrayutils.safe_divide(n_pass_cut_and_trigger, n_total)
+        logger.info('dataset=%s bare_trigger_eff=%s trigger+550jetpt=%s', dataset.name, eff[0], eff[1])
+        result.append((dataset.name, eff[0], eff[1]))
+    return result
+
 def trigger_plots_plain_efficiency_jetpt(year, datasets, is_signal=True):
     import re
     svjflatanalysis.utils.reset_color()
@@ -244,11 +260,13 @@ def trigger_plots_plain_efficiency_jetpt(year, datasets, is_signal=True):
         eff = svjflatanalysis.arrayutils.safe_divide(n_pass_cut_and_trigger, n_total)
         # Plot
         if is_signal:
+            name = dataset.name
             mass = int(re.search(r'\d+', dataset.name).group())
             label = r'$m_{{Z\prime}}={}$ GeV'.format(mass)
         else:
-            label = dataset.get_category()
-        ax.plot(cut_values, eff, color=color, label)
+            name = dataset[0].get_category()
+            label = dataset[0].get_category()
+        ax.plot(cut_values, eff, color=color, label=label)
         eff0 = eff[0]
         eff550 = eff[cut_values == 550.][0]
         ax.plot([0., 550.], [eff0, eff550], marker='o', color=color, linewidth=0)
@@ -260,7 +278,7 @@ def trigger_plots_plain_efficiency_jetpt(year, datasets, is_signal=True):
             550., eff550, '{:.6f}'.format(eff550),
             verticalalignment='bottom', horizontalalignment='left', fontsize=16, color=color
             )
-        logger.info('%s: bare trigger eff: %s , trigger+550cut: %s', dataset.name, eff0, eff550)
+        logger.info('%s: bare trigger eff: %s , trigger+550cut: %s', name, eff0, eff550)
     # Some bellification
     ax.set_xlabel(cut_title)
     ax.set_ylabel('Trigger efficiency')
