@@ -55,6 +55,9 @@ GENJET250_EFFICIENCIES = {
     250 : 0.0088,
     }
 
+# ______________________________________________________________________
+# Trigger efficiencies
+# both for just the trigger, and trigger + jetpt>550
 
 NOCUTS_TRIGGER_EFF = {
     150 : 0.0004792296242839746,
@@ -68,6 +71,80 @@ NOCUTS_TRIGGER_PLUS_JETPT550_EFF = {
     250 : 0.0005797685967079227,
     450 : 0.002224450724769806,
     650 : 0.005264322052643222,
+    }
+
+NOCUTS_TRIGGER_EFF_BKG = {
+    'Autumn18.TTJets_SingleLeptFromTbar_TuneCP5_13TeV-madgraphMLM-pythia8' : 0.04059877523247902,
+    'Autumn18.TTJets_SingleLeptFromT_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.043112978111872646,
+    'Autumn18.TTJets_DiLept_TuneCP5_13TeV-madgraphMLM-pythia8'             : 0.035600578871201154,
+    'Autumn18.TTJets_HT-600to800_TuneCP5_13TeV-madgraphMLM-pythia8'        : 0.7729,
+    'Autumn18.TTJets_HT-800to1200_TuneCP5_13TeV-madgraphMLM-pythia8'       : 0.9744000000000002,
+    'Autumn18.TTJets_HT-1200to2500_TuneCP5_13TeV-madgraphMLM-pythia8'      : 0.9999000000000001,
+    'Autumn18.TTJets_HT-2500toInf_TuneCP5_13TeV-madgraphMLM-pythia8'       : 1.0,
+    'Autumn18.QCD_Pt_80to120_TuneCP5_13TeV_pythia8'                        : 0.0,
+    'Autumn18.QCD_Pt_120to170_TuneCP5_13TeV_pythia8'                       : 0.0,
+    'Autumn18.QCD_Pt_170to300_TuneCP5_13TeV_pythia8'                       : 0.00247269730063878,
+    'Autumn18.QCD_Pt_300to470_TuneCP5_13TeV_pythia8'                       : 0.1838183818381838,
+    'Autumn18.QCD_Pt_470to600_TuneCP5_13TeV_pythia8'                       : 0.9240924092409241,
+    'Autumn18.QCD_Pt_600to800_TuneCP5_13TeV_pythia8'                       : 0.9981,
+    'Autumn18.QCD_Pt_800to1000_TuneCP5_13TeV_pythia8_ext1'                 : 0.9996999999999999,
+    'Autumn18.QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8'                     : 0.9999,
+    'Autumn18.QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8'                     : 1.0,
+    'Autumn18.QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8'                     : 1.0,
+    'Autumn18.QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8'                     : 1.0,
+    'Autumn18.QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8'                      : 1.0,
+    'Autumn18.WJetsToLNu_HT-70To100_TuneCP5_13TeV-madgraphMLM-pythia8'     : 0.0,
+    'Autumn18.WJetsToLNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.0,
+    'Autumn18.WJetsToLNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.00021344717182497332,
+    'Autumn18.WJetsToLNu_HT-400To600_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.022404092071611252,
+    'Autumn18.WJetsToLNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.16463292658531706,
+    'Autumn18.WJetsToLNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8'   : 0.6910000000000001,
+    'Autumn18.WJetsToLNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8'  : 0.999,
+    'Autumn18.WJetsToLNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8'   : 1.0,
+    'Autumn18.ZJetsToNuNu_HT-100To200_13TeV-madgraph'                      : 0.0,
+    'Autumn18.ZJetsToNuNu_HT-200To400_13TeV-madgraph'                      : 0.0,
+    'Autumn18.ZJetsToNuNu_HT-400To600_13TeV-madgraph'                      : 0.0,
+    'Autumn18.ZJetsToNuNu_HT-600To800_13TeV-madgraph'                      : 0.14755902360944378,
+    'Autumn18.ZJetsToNuNu_HT-800To1200_13TeV-madgraph'                     : 0.6389,
+    'Autumn18.ZJetsToNuNu_HT-1200To2500_13TeV-madgraph'                    : 0.9964999999999999,
+    'Autumn18.ZJetsToNuNu_HT-2500ToInf_13TeV-madgraph'                     : 1.0,
+    }
+
+NOCUTS_TRIGGER_PLUS_JETPT550_EFF_BKG = {
+    'Autumn18.TTJets_SingleLeptFromTbar_TuneCP5_13TeV-madgraphMLM-pythia8' : 0.015649807212519844,
+    'Autumn18.TTJets_SingleLeptFromT_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.015476453681185054,
+    'Autumn18.TTJets_DiLept_TuneCP5_13TeV-madgraphMLM-pythia8'             : 0.01678726483357453,
+    'Autumn18.TTJets_HT-600to800_TuneCP5_13TeV-madgraphMLM-pythia8'        : 0.4633,
+    'Autumn18.TTJets_HT-800to1200_TuneCP5_13TeV-madgraphMLM-pythia8'       : 0.8111,
+    'Autumn18.TTJets_HT-1200to2500_TuneCP5_13TeV-madgraphMLM-pythia8'      : 0.9925,
+    'Autumn18.TTJets_HT-2500toInf_TuneCP5_13TeV-madgraphMLM-pythia8'       : 1.0,
+    'Autumn18.QCD_Pt_80to120_TuneCP5_13TeV_pythia8'                        : 0.0,
+    'Autumn18.QCD_Pt_120to170_TuneCP5_13TeV_pythia8'                       : 0.0,
+    'Autumn18.QCD_Pt_170to300_TuneCP5_13TeV_pythia8'                       : 0.00010302905419328252,
+    'Autumn18.QCD_Pt_300to470_TuneCP5_13TeV_pythia8'                       : 0.0288028802880288,
+    'Autumn18.QCD_Pt_470to600_TuneCP5_13TeV_pythia8'                       : 0.5894589458945895,
+    'Autumn18.QCD_Pt_600to800_TuneCP5_13TeV_pythia8'                       : 0.9843000000000001,
+    'Autumn18.QCD_Pt_800to1000_TuneCP5_13TeV_pythia8_ext1'                 : 0.9982,
+    'Autumn18.QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8'                     : 0.9997,
+    'Autumn18.QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8'                     : 1.0,
+    'Autumn18.QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8'                     : 1.0,
+    'Autumn18.QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8'                     : 1.0,
+    'Autumn18.QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8'                      : 1.0,
+    'Autumn18.WJetsToLNu_HT-70To100_TuneCP5_13TeV-madgraphMLM-pythia8'     : 0.0,
+    'Autumn18.WJetsToLNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.0,
+    'Autumn18.WJetsToLNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.0,
+    'Autumn18.WJetsToLNu_HT-400To600_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.0034782608695652175,
+    'Autumn18.WJetsToLNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8'    : 0.05071014202840567,
+    'Autumn18.WJetsToLNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8'   : 0.3254,
+    'Autumn18.WJetsToLNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8'  : 0.9581,
+    'Autumn18.WJetsToLNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8'   : 1.0,
+    'Autumn18.ZJetsToNuNu_HT-100To200_13TeV-madgraph'                      : 0.0,
+    'Autumn18.ZJetsToNuNu_HT-200To400_13TeV-madgraph'                      : 0.0,
+    'Autumn18.ZJetsToNuNu_HT-400To600_13TeV-madgraph'                      : 0.0,
+    'Autumn18.ZJetsToNuNu_HT-600To800_13TeV-madgraph'                      : 0.057823129251700675,
+    'Autumn18.ZJetsToNuNu_HT-800To1200_13TeV-madgraph'                     : 0.3083,
+    'Autumn18.ZJetsToNuNu_HT-1200To2500_13TeV-madgraph'                    : 0.9479999999999998,
+    'Autumn18.ZJetsToNuNu_HT-2500ToInf_13TeV-madgraph'                     : 0.9998999999999999,
     }
 
 
