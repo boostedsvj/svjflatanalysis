@@ -2,7 +2,7 @@
 List of datasets currently being analyzed
 """
 
-import os.path as osp
+import os, os.path as osp, glob
 import seutils
 
 import svjflatanalysis
@@ -213,11 +213,29 @@ def init_sigs_nohtcut(year, **kwargs):
 # ______________________________________________________________________
 # Triggered samples
 
-triggered_path = 'root://cmseos.fnal.gov//store/user/lpcsusyhad/SVJ2017/boosted/treemaker/triggered_and_jetpt550'
+substructure_branches = [
+    b'JetsAK15_axismajor',
+    b'JetsAK15_axisminor',
+    b'JetsAK15_ecfN2b1',
+    b'JetsAK15_ecfN2b2',
+    b'JetsAK15_ecfN3b1',
+    b'JetsAK15_ecfN3b2',
+    b'JetsAK15_girth',
+    b'JetsAK15_NsubjettinessTau1',
+    b'JetsAK15_NsubjettinessTau2',
+    b'JetsAK15_NsubjettinessTau3',
+    b'JetsAK15_ptD',
+    ]
+
+triggered_path = (
+    'root://cmseos.fnal.gov//store/user/lpcsusyhad/SVJ2017/boosted/treemaker/triggered_and_jetpt550'
+    if os.uname()[1].endswith('.fnal.gov') else 
+    '/Users/klijnsma/work/svj/flat/data/triggered_and_jetpt550/'
+    )
+
 def init_sig_triggered(year, mz, **kwargs):
     rootfiles = [osp.join(triggered_path, 'year{}_mz{}.root'.format(year, mz))]
-    assert seutils.isfile(rootfiles[0])
-    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True)
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True) + substructure_branches
     signal = svjflatanalysis.dataset.SignalDataset('mz{}_year{}'.format(mz, year), rootfiles, treename='PreSelection', **kwargs)
     signal.xs = SIGNAL_CROSSSECTIONS[mz] * NOCUTS_TRIGGER_PLUS_JETPT550_EFF[mz]
     return signal
@@ -225,7 +243,24 @@ def init_sig_triggered(year, mz, **kwargs):
 def init_sigs_triggered(year, **kwargs):
     return [init_sig_triggered(year, mz, **kwargs) for mz in [150, 250]]
 
-
+def init_bkgs_triggered(**kwargs):
+    bkgs = []
+    path = osp.join(triggered_path, 'Autumn18.*')
+    bkg_rootfiles = seutils.ls_wildcard(path) if os.uname()[1].endswith('.fnal.gov') else glob.glob(path)
+    kwargs['treename'] = 'PreSelection'
+    kwargs['branches'] = kwargs.get('branches', []) + svjflatanalysis.arrayutils.nonnested_branches(b'JetsAK15', add_subjets=True) + substructure_branches
+    for bkg_rootfile in bkg_rootfiles:
+        logger.info('Loading %s', bkg_rootfile)
+        name = osp.basename(bkg_rootfile).replace('.root', '')
+        bkg = svjflatanalysis.dataset.BackgroundDataset(name, [bkg_rootfile], **kwargs)
+        bkg.get_xs()
+        # Take into account the trigger efficiencies
+        if not name in NOCUTS_TRIGGER_PLUS_JETPT550_EFF_BKG:
+            logger.error('FIXME: efficiency for %s not calculated yet!', name)
+            continue
+        bkg.xs *= NOCUTS_TRIGGER_PLUS_JETPT550_EFF_BKG[name]
+        bkgs.append(bkg)
+    return bkgs
 
 # ______________________________________________________________________
 # genjet250 samples

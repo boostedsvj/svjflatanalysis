@@ -173,6 +173,7 @@ def hist_single_distribution(
             coffea.hist.Cat('label', varname),
             )
     for arrays, dataset in arrays_iterator:
+        print(dataset.get_weight(), get_array(arrays))
         hist.fill(label=distrname, weight=dataset.get_weight(), **{varname: get_array(arrays)})
     return hist
 
@@ -312,11 +313,13 @@ def dphimet_cut_function(arrays, cut):
 dphimet_cut_values = [ 0.0, 0.5, 0.8, 1.0, 1.5, 2.5, 1e6]
 
 def deltaeta_cut_function(arrays, cut):
-    n_total = arrays[b'JetsAK15_subleading'].counts.sum()
+    leading_jets = svjflatanalysis.arrayutils.Jets(b'JetsAK15_leading', arrays, has_subjets=False, has_substructure=False)
+    subleading_jets = svjflatanalysis.arrayutils.Jets(b'JetsAK15_subleading', arrays, has_subjets=False, has_substructure=False)
+    n_total = subleading_jets.counts.sum()
     # Only get the leading jets for when there is a subleading jet too
-    leading_jets = arrays[b'JetsAK15_leading'][arrays[b'JetsAK15_subleading'].counts > 0].flatten()
-    subleading_jets = arrays[b'JetsAK15_subleading'].flatten()
-    deta = np.abs(leading_jets.eta - subleading_jets.eta)
+    leading_jets = leading_jets[subleading_jets.counts > 0]
+    subleading_jets = subleading_jets[subleading_jets.counts > 0]
+    deta = np.abs(leading_jets.eta - subleading_jets.eta).flatten()
     n_pass = (deta < cut).sum()
     return n_pass, n_total
 deltaeta_cut_values = [ 0.0, 0.15, 0.30, 0.50, 1.0, 1.5, 2.0, 3.0, 10.]
@@ -326,6 +329,33 @@ def rt_cut_function(arrays, cut):
     n_total = (arrays[b'JetsAK15_subleading_RT'] > 0.0).flatten().sum()
     return n_pass, n_total
 rt_cut_values = [ 0.0, 0.15, 0.30, 0.50, 1.0, 1.5, 10.]
+
+def mt_cut_function(arrays, cut):
+    n_pass = (arrays[b'JetsAK15_subleading_MT'] > cut).flatten().sum()
+    n_total = (arrays[b'JetsAK15_subleading_MT'] > 0.0).flatten().sum()
+    return n_pass, n_total
+mt_cut_values = [ 0.0, 10., 30., 50., 70., 100., 150., 200., 500., 1e7 ]
+
+
+def generic_jetvar_cut_function_factory(varname, operator='larger'):
+    def cutfn(arrays, cut):
+        if operator == 'larger':
+            n_pass = (arrays[varname] > cut).flatten().sum()
+            n_total = (arrays[varname] > 0.0).flatten().sum()
+        else:
+            n_pass = (arrays[varname] < cut).flatten().sum()
+            n_total = (arrays[varname] < 1e7).flatten().sum()            
+        return n_pass, n_total
+    cutfn.name = varname.decode('utf-8') + (' > ' if operator=='larger' else ' < ') + 'cut'
+    return cutfn
+subleading_axismajor_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_axismajor')
+subleading_axisminor_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_axisminor')
+subleading_ecfN2b1_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_ecfN2b1')
+subleading_ecfN2b2_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_ecfN2b2')
+subleading_ecfN3b1_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_ecfN3b1')
+subleading_ecfN3b2_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_ecfN3b2')
+subleading_girth_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_girth')
+subleading_ptD_cut_function = generic_jetvar_cut_function_factory(b'JetsAK15_subleading_ptD', operator='smaller')
 
 
 def apply_trigger_first(cut_fn):
@@ -337,19 +367,24 @@ def apply_trigger_first(cut_fn):
         return cut_fn(arrays, cut)
     return wrapped
 
-def apply_mass_window(cut_fn, mass, window_size=100.):
+def apply_window_cutfn(cut_fn, left, right):
     """
-    Decorator for post-trigger cuts
     """
-    def wrapped(arrays, cut):
-        selection = (arrays[b'JetsAK15_subleading_softDropMass'] > mass - window_size) & (arrays[b'JetsAK15_subleading_softDropMass'] < mass + window_size)
+    def cutfn_with_mass_window(arrays, cut):
+        arrays = svjflatanalysis.arrayutils.apply_window(arrays, left, right)
         return cut_fn(arrays, cut)
-    return wrapped
+    cutfn_with_mass_window.name = cut_fn.__name__
+    cutfn_with_mass_window.left = left
+    cutfn_with_mass_window.right = right
+    return cutfn_with_mass_window
 
-msd_leading_posttrigger_cut_function = apply_trigger_first(msd_leading_cut_function)
-msd_subleading_posttrigger_cut_function = apply_trigger_first(msd_subleading_cut_function)
-met_posttrigger_cut_function = apply_trigger_first(met_cut_function)
-dphimet_posttrigger_cut_function = apply_trigger_first(dphimet_cut_function)
-deltaeta_posttrigger_cut_function = apply_trigger_first(deltaeta_cut_function)
-rt_posttrigger_cut_function = apply_trigger_first(rt_cut_function)
-
+def apply_window_onfn(fn, left, right):
+    """
+    """
+    def fn_with_mass_window(arrays, *args, **kwargs):
+        arrays = svjflatanalysis.arrayutils.apply_window(arrays, left, right)
+        return fn(arrays, *args, **kwargs)
+    fn_with_mass_window.name = fn.__name__
+    fn_with_mass_window.left = left
+    fn_with_mass_window.right = right
+    return fn_with_mass_window

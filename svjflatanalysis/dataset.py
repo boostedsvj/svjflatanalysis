@@ -214,6 +214,7 @@ class SVJDataset(Dataset):
     """
     SVJ-specific things about the dataset
     """
+    _is_signal = None
     def __init__(self, name, rootfiles, *args, **kwargs):
         self.name = name
         # Make sure the default branches are in there
@@ -246,16 +247,29 @@ class SVJDataset(Dataset):
     def get_category(self):
         return self.name
 
+    def is_signal(self):
+        return self._is_signal
+
+    def is_bkg(self):
+        return not(self._is_signal)
+
 
 class SignalDataset(SVJDataset):
+    _is_signal = True
     def get_xs(self):
         if hasattr(self, 'xs'): return self.xs
         self.xs = 100.
         return self.xs
 
+    def get_title(self):
+        match = re.search(r'mz(\d+)', self.name)
+        if not match:
+            return self.name
+        else:
+            return r'$m_{{Z\prime}}={}$ GeV'.format(match.group(1))
 
 class BackgroundDataset(SVJDataset):
-
+    _is_signal = False
     titles = {
         'ttjets' : r'$t\bar{t}$',
         'qcd' : 'QCD',

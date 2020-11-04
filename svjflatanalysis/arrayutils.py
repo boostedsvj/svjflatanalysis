@@ -112,6 +112,7 @@ def is_nested(arrays):
     """
     Checks whether an array is of the old, nested style type, or the newer non-nested
     """
+    if numentries(arrays) == 0: return False
     return not(arrays[b'JetsAK15'].dtype == 'int32')
 
 def get_jets(arrays, name=b'JetsAK15', attributes=None, has_subjets=True):
@@ -122,8 +123,28 @@ def get_jets(arrays, name=b'JetsAK15', attributes=None, has_subjets=True):
     if is_nested(arrays):
         jets = arrays[name]
     else:
+        if attributes is None:
+            attributes = [
+                'axismajor',
+                'axisminor',
+                'ecfN2b1',
+                'ecfN2b2',
+                'ecfN3b1',
+                'ecfN3b2',
+                'girth',
+                'NsubjettinessTau1',
+                'NsubjettinessTau2',
+                'NsubjettinessTau3',
+                'ptD',
+                ]
         jets = Jets(name, arrays, attributes, has_subjets=has_subjets)
     return jets
+
+def apply_window(arrays, left, right, branch=b'JetsAK15_subleading_MT'):
+    selection = (
+        (arrays[b'JetsAK15_subleading_MT'] > left) & (arrays[b'JetsAK15_subleading_MT'] < right)
+        ).any()
+    return select(arrays, selection, inplace=False)
 
 # ------------------------
 # In-place array modifications
@@ -132,10 +153,27 @@ class Jets(object):
     """
     Fakes a TLorentzVector-style jet object in ntuples with a high splitlevel
     """
-    def __init__(self, name, arrays=None, attributes=None, has_subjets=True):
-        self.attributes = [] if attributes is None else attributes
+    subtructure_branches = [
+        'axismajor',
+        'axisminor',
+        'ecfN2b1',
+        'ecfN2b2',
+        'ecfN3b1',
+        'ecfN3b2',
+        'girth',
+        'NsubjettinessTau1',
+        'NsubjettinessTau2',
+        'NsubjettinessTau3',
+        'ptD',
+        ]
+
+    def __init__(self, name, arrays=None, attributes=None, has_subjets=True, has_substructure=True):
         self.has_subjets = has_subjets
+        self.has_substructure = has_substructure
         self.name = name
+        self.name_decoded = name.decode('utf-8')
+        self.attributes = [] if attributes is None else attributes
+
         if arrays:
             self.counts = arrays[self.name]
             self.pt = arrays[add_to_bytestring(self.name, '.fCoordinates.fPt')]
@@ -159,8 +197,9 @@ class Jets(object):
                 self.subjet_phi = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPhi')])
                 self.subjet_energy = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fE')])
 
-            for attr in self.attributes:
-                setattr(self, attr, arrays[add_to_bytestring(self.name, '_' + attr)])            
+            if self.has_substructure:
+                for attr in self.subtructure_branches:
+                    setattr(self, attr, arrays[(self.name_decoded + '_' + attr).encode('utf-8')])
 
     def _mag2(self):
         # Copied from https://github.com/scikit-hep/uproot-methods/blob/master/uproot_methods/classes/TLorentzVector.py
@@ -189,6 +228,8 @@ class Jets(object):
         attributes = ['pt', 'eta', 'phi', 'energy', 'mass2', 'mass', 'softdropmass'] + self.attributes
         if self.has_subjets:
             attributes += ['n_subjets', 'subjet_pt', 'subjet_eta', 'subjet_phi', 'subjet_energy']
+        if self.has_substructure:
+            attributes += self.subtructure_branches
         return attributes
 
     def __getitem__(self, *args, **kwargs):
@@ -227,6 +268,14 @@ class Jets(object):
             arrays[add_to_bytestring(name, '_subjets.fCoordinates.fPhi')] = self.subjet_phi
             arrays[add_to_bytestring(name, '_subjets.fCoordinates.fE')] = self.subjet_energy
             arrays[add_to_bytestring(name, '_subjetsCounts')] = self.n_subjets
+        if self.has_substructure:
+            for attr in self.subtructure_branches:
+                key = (self.name_decoded + tag + '_' + attr).encode('utf-8')
+                arrays[key] = getattr(self, attr)
+        for attr in self.attributes:
+            key = (self.name_decoded + tag + '_' + attr).encode('utf-8')
+            arrays[key] = getattr(self, attr)
+
 
 def add_to_bytestring(bytestring, tag):
     normal_string = bytestring.decode('utf-8')
@@ -247,7 +296,7 @@ def get_leading_jet(arrays, jets_branch=b'JetsAK15'):
     arrays[add_to_bytestring(jets_branch, '_leading')] = arrays[jets_branch][jets.pt.argmax()]
 
 def get_leading_and_subleading_jet(arrays, jets_branch=b'JetsAK15'):
-    jets = get_jets(arrays, jets_branch)
+    jets = Jets(jets_branch, arrays)
     leading_pt_index = jets.pt.argmax()
     # Set the max pt to a very low value in this copy,
     # so that the subleading pt becomes the new maximum
