@@ -26,11 +26,16 @@ def is_interactive():
     return not hasattr(main, '__file__')
 IS_INTERACTIVE = is_interactive()
 
-if IS_INTERACTIVE:
-    from tqdm.notebook import tqdm
-    logger.info('Using tqdm notebook')
-else:
-    from tqdm import tqdm
+try:
+    if IS_INTERACTIVE:
+        from tqdm.notebook import tqdm
+        logger.info('Using tqdm notebook')
+    else:
+        from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    logger.error('Could not import tqdm')
+    HAS_TQDM = False
 
 from . import utils
 from . import arrayutils

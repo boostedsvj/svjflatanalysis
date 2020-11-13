@@ -2,7 +2,6 @@
 import uproot, re, numpy as np
 import svjflatanalysis
 logger = svjflatanalysis.logger
-tqdm = svjflatanalysis.tqdm
 
 # ______________________________________________________________________
 # arrays-level helpers
@@ -104,7 +103,10 @@ class Dataset(object):
             total = len(rootfiles)
             if progressbar: logger.info('Iterating over %s rootfiles for %s', total, self)
         if progressbar:
-            iterator = tqdm(iterator, total=total, desc='arrays' if use_cache else 'root files')
+            if not svjflatanalysis.HAS_TQDM:
+                logger.error('tqdm could not be imported, progressbars are disabled')
+            else:
+                iterator = svjflatanalysis.tqdm(iterator, total=total, desc='arrays' if use_cache else 'root files')
         for arrays in iterator:
             yield arrays
 
@@ -395,7 +397,7 @@ def build_feature_array(datasets, n=100, use_cache=True):
                 branches=svjflatanalysis.samples.svj_branches
                 ))
             basic_svj_analysis_branches(arrays)
-        feature_array = svjflatanalysis.arrayutils.to_feature_array(arrays).T
+        feature_array = svjflatanalysis.arrayutils.to_feature_array(arrays)
         n_actual = feature_array.shape[0]
         if n_actual != n_dataset:
             logger.warning(

@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
     name          = 'svjflatanalysis',
-    version       = '0.3',
+    version       = '0.4',
     license       = 'BSD 3-Clause License',
     description   = 'Description text',
     url           = 'https://github.com/tklijnsma/svjflatanalysis.git',
