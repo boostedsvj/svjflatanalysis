@@ -49,8 +49,11 @@ from . import roccurve
 from . import trigger
 
 # Default plotting params
-import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 18})
+try:
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({'font.size': 18})
+except ImportError:
+    logger.error('Could not import matplotlib')
 try:
     import mplhep as hep
     plt.style.use(hep.style.CMS)

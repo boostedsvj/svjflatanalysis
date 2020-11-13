@@ -1,5 +1,5 @@
 # import uproot4 as uproot
-import uproot, re
+import uproot, re, numpy as np
 import svjflatanalysis
 logger = svjflatanalysis.logger
 tqdm = svjflatanalysis.tqdm
@@ -107,7 +107,68 @@ class Dataset(object):
             iterator = tqdm(iterator, total=total, desc='arrays' if use_cache else 'root files')
         for arrays in iterator:
             yield arrays
-            
+
+    def iterate_batch(self, batch_size=32, **kwargs):
+        """
+        Like self.iterate, but yields fixed sized chunks of events
+        (except the last chunk, which will be however many events are left)
+        """
+        import awkward
+        # Helper function to split an arrays
+        def split(arrays, n):
+            first  = { k : v[:n] for k, v in arrays.items() }
+            second = { k : v[n:] for k, v in arrays.items() }
+            return first, second
+        # Helper function to merge an arrays
+        def merge(batch):
+            r = {}
+            for key in batch[0].keys():
+                r[key] = awkward.concatenate((b[key] for b in batch))
+            return r
+        # Initialize some variables
+        arrays_iterator = self.iterate(**kwargs)
+        n_todo = batch_size
+        batch = []
+        arrays = next(arrays_iterator)
+        n_block = svjflatanalysis.arrayutils.numentries(arrays)
+        # Build batches
+        while True:
+            if n_block > n_todo:
+                # Take off the needed number of chunks to fill the batch
+                for_batch, arrays = split(arrays, n_todo)
+                batch.append(for_batch)
+                n_block -= n_todo
+                n_todo = 0
+            elif n_block <= n_todo:
+                # No need to split, just add the whole arrays to the batch and open a new arrays
+                batch.append(arrays)
+                n_todo -= n_block
+                try:
+                    arrays = next(arrays_iterator)
+                except StopIteration:
+                    # No more new arrays to take
+                    break
+                # Reset block counter
+                n_block = svjflatanalysis.arrayutils.numentries(arrays)
+            if n_todo == 0:
+                # Batch is ready
+                if len(batch) == 0:
+                    raise Exception('No events in batch')
+                elif len(batch) == 1:
+                    # No need to merge
+                    yield batch[0]
+                elif len(batch) > 1:
+                    yield merge(batch)
+                # Reset todo counter and the batch
+                n_todo = batch_size
+                batch = []
+        # Yield the remaining events in the batch if there are any
+        if len(batch) == 1:
+            # No need to merge
+            yield batch[0]
+        elif len(batch) > 1:
+            yield merge(batch)
+
     def iterate_events(self, **kwargs):
         """
         Like self.iterate(), but yields a single event per iteration
@@ -181,25 +242,15 @@ class Dataset(object):
                     self._numentries += uproot.open(rootfile).get(self.treename).numentries
             return self._numentries
 
-
-
 # ______________________________________________________________________
 # Basic analysis things
-
-DEFAULT_BRANCHES = [
-    b'JetsAK15',
-    b'JetsAK15_softDropMass',
-    # b'JetsAK15_subjets',
-    b'TriggerPass',
-    b'MET',
-    b'METPhi',
-    b'HT',
-    ]
 
 def basic_svj_analysis_branches(arrays):
     """
     Standard analysis array operations that we want to run basically always
     """
+    # First check if the branches are already added:
+    if b'JetsAK15_subleading' in arrays: return
     svjflatanalysis.arrayutils.filter_zerojet_events(arrays)
     svjflatanalysis.arrayutils.get_leading_and_subleading_jet(arrays)
     svjflatanalysis.arrayutils.get_jet_closest_to_met(arrays)
@@ -211,27 +262,33 @@ def basic_svj_analysis_branches(arrays):
     svjflatanalysis.arrayutils.calculate_mt(arrays, b'JetsAK15_subclosest')
 
 class SVJDataset(Dataset):
-    """
+    """zzz
     SVJ-specific things about the dataset
     """
     _is_signal = None
     def __init__(self, name, rootfiles, *args, **kwargs):
         self.name = name
-        # Make sure the default branches are in there
-        if 'branches' in kwargs:
-            kwargs['branches'] = list(set(kwargs['branches'] + DEFAULT_BRANCHES))
-        else:
-            kwargs['branches'] = DEFAULT_BRANCHES[:]
         # Set a default value for the number of entries to be kept in the cache
         if not 'max_entries' in kwargs: kwargs['max_entries'] = 1000
         super().__init__(rootfiles, *args, **kwargs)
-        # Apply the standard calculations on the cache
-        if self.cache:
-            for arrays in self.cache:
-                basic_svj_analysis_branches(arrays) 
+        # # Apply the standard calculations on the cache
+        # if self.cache:
+        #     for arrays in self.cache:
+        #         basic_svj_analysis_branches(arrays) 
 
     def __repr__(self):
         return super().__repr__().replace('Dataset', 'Dataset ' + self.get_category())
+
+    def iterate(self, *args, **kwargs):
+        """
+        Like the super iterate, but applies some default branches and
+        adds some more calculated branches
+        """
+        # Insert the default branches
+        if not 'branches' in kwargs: kwargs['branches'] = svjflatanalysis.samples.svj_branches
+        for arrays in super().iterate(*args, **kwargs):
+            basic_svj_analysis_branches(arrays) 
+            yield arrays
 
     def shortname(self):
         return self.name[:20]
@@ -298,3 +355,59 @@ class BackgroundDataset(SVJDataset):
 
     def get_title(self):
         return self.titles.get(self.get_category(), self.get_category())
+
+
+class FeatureDataset():
+    pass
+
+
+
+
+
+def n_events_weighted_by_xs(n_target, datasets):
+    xss = np.array([d.get_xs() for d in datasets])
+    n_events_per_dataset = xss / np.sum(xss) * n_target
+    for dataset, n_dataset in zip(datasets, n_events_per_dataset):
+        logger.info('{:4d} ({:7.2f}) events for {}'.format(int(n_dataset), n_dataset, dataset.name))
+    n_events_per_dataset = n_events_per_dataset.astype(np.int64)
+    return n_events_per_dataset
+
+def build_feature_array(datasets, n=100, use_cache=True):
+    """
+    Takes a list of datasets and returns a flat numpy array with features per event.
+    Tries to weight by cross section
+    """
+    if hasattr(datasets, 'treename'): datasets = [datasets]
+    # Determine number of events to take per dataset, depending on cross section
+    n_events_per_dataset = n_events_weighted_by_xs(n, datasets)
+    # Build the array
+    to_flatten = []
+    y = []
+    for dataset, n_dataset in zip(datasets, n_events_per_dataset):
+        if n_dataset == 0: continue
+        logger.info('Fetching %s events for dataset %s...', n_dataset, dataset.name)
+        if use_cache:
+            arrays = next(dataset.iterate_batch(n_dataset))
+        else:
+            arrays = next(dataset.iterate_batch(
+                n_dataset,
+                use_cache=False,
+                branches=svjflatanalysis.samples.svj_branches
+                ))
+            basic_svj_analysis_branches(arrays)
+        feature_array = svjflatanalysis.arrayutils.to_feature_array(arrays).T
+        n_actual = feature_array.shape[0]
+        if n_actual != n_dataset:
+            logger.warning(
+                'Retrieved %s values rather than target %s values for dataset %s',
+                n_actual, n_dataset, dataset.name
+                )
+        to_flatten.append(feature_array)
+        y.append(np.zeros(n_actual, dtype=np.int8) if dataset.is_bkg() else np.ones(n_actual, dtype=np.int8))
+        del arrays
+
+    # Concat per dataset and return
+    X = np.concatenate(to_flatten).T
+    y = np.concatenate(y)
+    return X, y
+

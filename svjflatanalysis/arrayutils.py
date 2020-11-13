@@ -11,6 +11,90 @@ def safe_divide(a, b):
     """
     return np.divide(a, b, out=np.zeros_like(a), where=b>0.)
 
+
+feature_labels = [
+    'met',
+    'subleading_pt',
+    'subleading_eta',
+    'subleading_energy',
+    'subleading_mt',
+    'subleading_rt',
+    'subleading_rtnew',
+    'subleading_msd',
+    'subleading_axismajor',
+    'subleading_axisminor',
+    'subleading_ecfN2b1',
+    'subleading_ecfN2b2',
+    'subleading_girth',
+    'subleading_ptd',
+    'leading_pt',
+    'leading_eta',
+    'leading_energy',
+    'leading_mt',
+    'leading_rt',
+    'leading_rtnew',
+    'leading_msd',
+    'leading_axismajor',
+    'leading_axisminor',
+    'leading_ecfN2b1',
+    'leading_ecfN2b2',
+    'leading_girth',
+    'leading_ptd',
+    'subleading_tau21',
+    'leading_tau21',
+    'deltaeta',
+    'dphimet',
+    ]
+
+def to_feature_array(arrays):
+    """
+    Transforms a dict-like arrays object to a flat numpy array for ML purposes
+    """
+    # Simply direct variables from the arrays object
+    plain_features = [
+        b'MET',
+        b'JetsAK15_subleading.fCoordinates.fPt',
+        b'JetsAK15_subleading.fCoordinates.fEta',
+        b'JetsAK15_subleading.fCoordinates.fE',
+        b'JetsAK15_subleading_MT',
+        b'JetsAK15_subleading_RT',
+        b'JetsAK15_subleading_RTnew',
+        b'JetsAK15_subleading_softDropMass',
+        b'JetsAK15_subleading_axismajor',
+        b'JetsAK15_subleading_axisminor',
+        b'JetsAK15_subleading_ecfN2b1',
+        b'JetsAK15_subleading_ecfN2b2',
+        b'JetsAK15_subleading_girth',
+        b'JetsAK15_subleading_ptD',
+        b'JetsAK15_leading.fCoordinates.fPt',
+        b'JetsAK15_leading.fCoordinates.fEta',
+        b'JetsAK15_leading.fCoordinates.fE',
+        b'JetsAK15_leading_MT',
+        b'JetsAK15_leading_RT',
+        b'JetsAK15_leading_RTnew',
+        b'JetsAK15_leading_softDropMass',
+        b'JetsAK15_leading_axismajor',
+        b'JetsAK15_leading_axisminor',
+        b'JetsAK15_leading_ecfN2b1',
+        b'JetsAK15_leading_ecfN2b2',
+        b'JetsAK15_leading_girth',
+        b'JetsAK15_leading_ptD',
+        ]
+    # Quantities that have to be calculated from branches
+    calculated_features = [
+        # tau21
+        lambda arrays: arrays[b'JetsAK15_subleading_NsubjettinessTau2'] / arrays[b'JetsAK15_subleading_NsubjettinessTau1'],
+        lambda arrays: arrays[b'JetsAK15_leading_NsubjettinessTau2'] / arrays[b'JetsAK15_leading_NsubjettinessTau1'],
+        svjflatanalysis.arrayutils.calculate_deltaeta,
+        svjflatanalysis.arrayutils.calculate_dphimet,
+        ]
+    # Build the returnable numpy array
+    plain = [ arrays[b].flatten() for b in plain_features ]
+    for fn in calculated_features:
+        plain.append(fn(arrays).flatten())
+    plain = np.array(plain)
+    return plain.T
+
 # ------------------------
 # Event level
 
@@ -353,6 +437,23 @@ def calculate_mt(arrays, jets_branch=b'JetsAK15_leading'):
 
     mt = np.sqrt( (jetse + mete)**2 - (jetsx + metx)**2 - (jetsy + mety)**2 )
     rt = arrays[b'MET'] / mt
+    rtnew = arrays[b'MET'] / np.sqrt(mt**2 + jets.pt**2)
     arrays[add_to_bytestring(jets_branch, '_MT')] = mt
     arrays[add_to_bytestring(jets_branch, '_RT')] = rt
+    arrays[add_to_bytestring(jets_branch, '_RTnew')] = rtnew
     
+def calculate_deltaeta(arrays, leading_branch=b'JetsAK15_leading', subleading_branch=b'JetsAK15_subleading'):
+    leading_jets = Jets(leading_branch, arrays, has_subjets=False, has_substructure=False)
+    subleading_jets = Jets(subleading_branch, arrays, has_subjets=False, has_substructure=False)
+    # Only get the leading jets for when there is a subleading jet too
+    leading_jets = leading_jets[subleading_jets.counts > 0]
+    subleading_jets = subleading_jets[subleading_jets.counts > 0]
+    deta = np.abs(leading_jets.eta - subleading_jets.eta)
+    return deta
+
+def calculate_dphimet(arrays, jets_branch=b'JetsAK15_subleading'):
+    jets = Jets(jets_branch, arrays, has_subjets=False, has_substructure=False)
+    dphi = np.abs(jets.phi - arrays[b'METPhi'])
+    dphi[dphi > 2.*pi] = dphi[dphi > 2.*pi] - 2.*pi  # Whole circles subtracted
+    dphi[dphi > pi] = 2.*pi - dphi[dphi > pi]  # Pick the smaller angle
+    return dphi
