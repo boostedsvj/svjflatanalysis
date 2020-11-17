@@ -14,13 +14,16 @@ def add_to_bytestring(bytestring, tag):
 def numentries(arrays):
     return arrays[list(arrays.keys())[0]].shape[0]
     
-def iterate_events(arrays):
+def iterate_events(arrays, flat=False):
     """
     Iterates event by event from an arrays of events
     """
     n = numentries(arrays)
     for i in range(n):
-        yield { k : v[i:i+1] for k, v in arrays.items() }
+        if flat:
+            yield { k : v[i] for k, v in arrays.items() }
+        else:
+            yield { k : v[i:i+1] for k, v in arrays.items() }
 
 def group_per_category(bkgs):
     """
@@ -190,6 +193,7 @@ class Dataset(object):
         self.sizeof_cache = 0
         self.numentries_cache = 0
         branches = None
+        if max_entries: kwargs['entrysteps'] = max_entries
         for arrays in self.iterate(use_cache=False, **kwargs):
             if branches is None: branches = list(arrays.keys())
             numentries = svjflatanalysis.arrayutils.numentries(arrays)

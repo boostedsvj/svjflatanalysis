@@ -251,7 +251,18 @@ class Jets(object):
         'ptD',
         ]
 
-    def __init__(self, name, arrays=None, attributes=None, has_subjets=True, has_substructure=True):
+    @classmethod
+    def from_ptetaphie(cls, name, pt, eta, phi, energy):
+        instance = cls(name, attributes=[], has_subjets=False, has_substructure=False)
+        instance.pt = pt
+        instance.eta = eta
+        instance.phi = phi
+        instance.energy = energy
+        instance.mass2 = instance._mag2()
+        instance.mass = instance._mass()
+        return instance
+
+    def __init__(self, name, arrays=None, attributes=None, has_subjets=True, has_preprocessed_subjets=False, has_substructure=True):
         self.has_subjets = has_subjets
         self.has_substructure = has_substructure
         self.name = name
@@ -269,17 +280,24 @@ class Jets(object):
             self.softdropmass = arrays[add_to_bytestring(self.name, '_softDropMass')]
             
             if self.has_subjets:
-                for offsets_branch in [ '_subjetsOffsets', '_subjetsCounts' ]:
-                    if add_to_bytestring(self.name, offsets_branch) in arrays.keys():
-                        break
+                if has_preprocessed_subjets:                
+                    self.n_subjets = arrays[add_to_bytestring(self.name, '_subjetsCounts')]
+                    self.subjet_pt = arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPt')]
+                    self.subjet_eta = arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fEta')]
+                    self.subjet_phi = arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPhi')]
+                    self.subjet_energy = arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fE')]
                 else:
-                    raise Exception('Could not determine any subjets offset branch in arrays')
-                self.offsets_branch = offsets_branch
-                self.n_subjets = arrays[add_to_bytestring(self.name, offsets_branch)]
-                self.subjet_pt = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPt')])
-                self.subjet_eta = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fEta')])
-                self.subjet_phi = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPhi')])
-                self.subjet_energy = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fE')])
+                    for offsets_branch in [ '_subjetsOffsets', '_subjetsCounts' ]:
+                        if add_to_bytestring(self.name, offsets_branch) in arrays.keys():
+                            break
+                    else:
+                        raise Exception('Could not determine any subjets offset branch in arrays')
+                    self.offsets_branch = offsets_branch
+                    self.n_subjets = arrays[add_to_bytestring(self.name, offsets_branch)]
+                    self.subjet_pt = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPt')])
+                    self.subjet_eta = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fEta')])
+                    self.subjet_phi = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fPhi')])
+                    self.subjet_energy = self._doublejagged_from_nsubjet(arrays[add_to_bytestring(self.name, '_subjets.fCoordinates.fE')])
 
             if self.has_substructure:
                 for attr in self.subtructure_branches:
@@ -299,7 +317,7 @@ class Jets(object):
         mag2[mag2 < 0.] = 0.
         return mag2
         # return np.sqrt(mag2, out=np.zeros_like(mag2), where=mag2>0.)
-        
+    
     def _doublejagged_from_nsubjet(self, array):
         """
         Returns a 'nested' JaggedArray based on n_subjets
