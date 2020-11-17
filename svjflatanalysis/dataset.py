@@ -128,7 +128,7 @@ class Dataset(object):
                 r[key] = awkward.concatenate((b[key] for b in batch))
             return r
         # Initialize some variables
-        arrays_iterator = self.iterate(**kwargs)
+        arrays_iterator = self.iterate(dict(kwargs, entrysteps=batch_size))
         n_todo = batch_size
         batch = []
         arrays = next(arrays_iterator)
