@@ -1,11 +1,11 @@
 from setuptools import setup
 setup(
     name          = 'svjflatanalysis',
-    version       = '0.6',
+    version       = '0.7',
     license       = 'BSD 3-Clause License',
     description   = 'Description text',
     url           = 'https://github.com/tklijnsma/svjflatanalysis.git',
-    download_url  = 'https://github.com/tklijnsma/svjflatanalysis/archive/v0_6.tar.gz',
+    download_url  = 'https://github.com/tklijnsma/svjflatanalysis/archive/v0_7.tar.gz',
     author        = 'Thomas Klijnsma',
     author_email  = 'tklijnsm@gmail.com',
     packages      = ['svjflatanalysis'],
