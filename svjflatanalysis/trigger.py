@@ -3,17 +3,13 @@ import svjflatanalysis
 logger = svjflatanalysis.logger
 
 import numpy as np, os, os.path as osp
-import matplotlib.pyplot as plt, mplhep
-
-# For curve fitting
-from scipy.optimize import curve_fit
-from scipy.optimize import fsolve
 
 def exp_fit_fn(x, a, b, c, d):
     return 1./(1.+np.exp(a-b*x+c*x**2-d*x**3))
 
 def inverse_exp_fit_fn(y, a, b, c, d, x_guess=0.):
     exp_fit_fn_1dof = lambda x: exp_fit_fn(x, a, b, c, d) - y
+    from scipy.optimize import fsolve
     return fsolve(exp_fit_fn_1dof, x_guess)
 
 
@@ -83,6 +79,7 @@ def plot_trigger_efficiency(
         else:
             fit_x = cut_values[:len(fit_eff)]
             # Fit on data with zeros removed, but plot with the full x spectrum
+            from scipy.optimize import curve_fit
             pars, cov = curve_fit(f=exp_fit_fn, xdata=fit_x, ydata=fit_eff, p0=[0, 0, 0, 0], bounds=(-np.inf, np.inf))
             fitline = ax.plot(cut_values, exp_fit_fn(cut_values, *pars), alpha=.5, color=color)
             if include_percentile_calc:
@@ -246,7 +243,7 @@ def get_trigger_plain_efficiency_jetpt(year, datasets, is_signal=True):
     return result
 
 def trigger_plots_plain_efficiency_jetpt(year, datasets, is_signal=True):
-    import re
+    import re, mplhep
     svjflatanalysis.utils.reset_color()
     cut_function, cut_values, cut_title = svjflatanalysis.trigger.get_cut_fn_and_vals('jetpt')
     ax = svjflatanalysis.utils.get_ax()
@@ -294,6 +291,7 @@ def trigger_plots_plain_efficiency_jetpt(year, datasets, is_signal=True):
 def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
     """
     """
+    import matplotlib.pyplot as plt, mplhep
     svjflatanalysis.utils.reset_color()
     import re
     if not signals:
@@ -336,6 +334,7 @@ def trigger_plots_for_year_signal(year, variable, signals=None, notebook=False):
 def trigger_plots_for_bkg(year, variable, bkgs=None, notebook=False):
     """
     """
+    import matplotlib.pyplot as plt, mplhep
     svjflatanalysis.utils.reset_color()
     import re
     if not bkgs:
