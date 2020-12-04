@@ -414,3 +414,27 @@ def init_ttjets_test(**kwargs):
     kwargs.update(make_cache=True, max_entries=50)
     return svjflatanalysis.dataset.BackgroundDataset('ttjets_testsample', rootfiles, **kwargs)
 
+
+features_data_path = '/Users/klijnsma/work/svj/flat/data/features_Dec02/'
+
+def init_features(pattern, is_bkg=False):
+    # Get list of unique names
+    names = set(osp.basename(s).split('_batch')[0] for s in glob.glob(features_data_path + pattern + '*.npz'))
+    datasets = []
+    Dataset = svjflatanalysis.dataset.FeatureDatasetBkg if is_bkg else svjflatanalysis.dataset.FeatureDatasetSig
+    for name in names:
+        print(features_data_path + name + '*.npz')
+        npzfiles = glob.glob(features_data_path + name + '*.npz')
+        d = Dataset(name, npzfiles)
+        datasets.append(d)
+    return datasets
+
+def init_bkg_features():
+    return init_features('Autumn18', is_bkg=True)
+
+def init_sig_features():
+    sigs = init_features('year', is_bkg=False)
+    for sig in sigs:
+        sig.xs = SIGNAL_CROSSSECTIONS[sig.mz()] * NOCUTS_TRIGGER_PLUS_JETPT550_EFF[sig.mz()]
+    return sigs
+

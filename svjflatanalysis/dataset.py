@@ -331,6 +331,14 @@ class SignalDataset(SVJDataset):
         else:
             return r'$m_{{Z\prime}}={}$ GeV'.format(match.group(1))
 
+def get_bkg_xs(name):
+    datasetname = name.split('.', 1)[1]
+    if '_ext' in datasetname: datasetname = datasetname.split('_ext')[0]
+    xs = svjflatanalysis.crosssections.get_xs(datasetname)
+    if xs is None:
+        raise RuntimeError('No cross section for {0}'.format(name))
+    return xs
+
 class BackgroundDataset(SVJDataset):
     _is_signal = False
     titles = {
@@ -341,12 +349,7 @@ class BackgroundDataset(SVJDataset):
         }
 
     def get_xs(self):
-        if hasattr(self, 'xs'): return self.xs
-        datasetname = self.name.split('.', 1)[1]
-        if '_ext' in datasetname: datasetname = datasetname.split('_ext')[0]
-        self.xs = svjflatanalysis.crosssections.get_xs(datasetname)
-        if self.xs is None:
-            raise RuntimeError('No cross section for {0}'.format(self.name))
+        if not hasattr(self, 'xs'): self.xs = get_bkg_xs(self.name)
         return self.xs
 
     def get_category(self):
@@ -364,10 +367,52 @@ class BackgroundDataset(SVJDataset):
 
 
 class FeatureDataset():
-    pass
+    def __init__(self, name=None, npzfiles=None, auto_read=True):
+        self.name = name
+        self.npzfiles = [] if npzfiles is None else npzfiles
+        self.labels = None
+        if auto_read: self.read()
+        # Heuristic for name determination
+        if name is None and npzfiles:
+            npzf = osp.basename(npzfiles[0])
+            npzf = npzf.replace('.npz','')
+            if '_batch' in npzf: npzf = npzf.split('_batch')[0]
+            self.name = npzf
 
+    def read(self):
+        if len(self.npzfiles) == 0:
+            logger.warning('No npz files for dataset %s', self.name)
+        features = []
+        for npzfile in self.npzfiles:
+            data = np.load(npzfile, allow_pickle=True)
+            if self.labels is None: self.labels = data['labels']
+            features.append(data['features'])
+        self.features = np.concatenate(tuple(features))
 
+class FeatureDatasetBkg(FeatureDataset):
+    def get_xs(self):
+        if not hasattr(self, 'xs'): self.xs = get_bkg_xs(self.name)
+        return self.xs
 
+    def get_category(self):
+        for key in [ 'ttjets', 'qcd', 'zjets', 'wjets' ]:
+            if key in self.name.lower():
+                return key
+        else:
+            raise Exception(
+                'No category could be determined from name {0}'.format(self.name)
+                )
+
+class FeatureDatasetSig(FeatureDataset):
+    def get_xs(self):
+        return self.xs
+
+    def get_category(self):
+        return self.name
+
+    def mz(self):
+        match = re.search(r'mz(\d+)', self.name)
+        return int(match.group(1))
 
 
 def n_events_weighted_by_xs(n_target, datasets):

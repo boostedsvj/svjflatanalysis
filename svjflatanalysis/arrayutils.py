@@ -93,6 +93,7 @@ def to_feature_array(arrays):
     for fn in calculated_features:
         plain.append(fn(arrays).flatten())
     plain = np.array(plain)
+    assert plain.shape[1] == len(plain_features) + len(calculated_features)
     return plain.T
 
 # ------------------------
@@ -188,9 +189,12 @@ def count_triggers(trigger_decisions, triggers):
     return n_pass #, n_total
 
 def filter_zerojet_events(arrays, inplace=True):
+    return require_minimum_njets(arrays, 1, inplace)
+
+def require_minimum_njets(arrays, njets=1, inplace=True):
     jets = get_jets(arrays, b'JetsAK15')
-    passes = (jets.counts >= 1)
-    return select(arrays, passes, inplace)
+    passes = (jets.counts >= njets)
+    return select(arrays, passes, inplace)    
 
 def is_nested(arrays):
     """
@@ -474,4 +478,16 @@ def calculate_dphimet(arrays, jets_branch=b'JetsAK15_subleading'):
     dphi = np.abs(jets.phi - arrays[b'METPhi'])
     dphi[dphi > 2.*pi] = dphi[dphi > 2.*pi] - 2.*pi  # Whole circles subtracted
     dphi[dphi > pi] = 2.*pi - dphi[dphi > pi]  # Pick the smaller angle
+    return dphi
+
+def normalize_dphi(dphi):
+    """
+    Normalizes a list of raw phi1-phi2 values: Subtracts 
+    whole 2*pi's, and then flips abs(values) > pi
+    """
+    dphi[dphi > 2.*pi] = dphi[dphi > 2.*pi] - 2.*pi
+    dphi[dphi < -2.*pi] = dphi[dphi < -2.*pi] + 2.*pi
+    # Then flip to -pi < phi < pi regime
+    dphi[dphi > pi] = dphi[dphi > pi] - 2.*pi
+    dphi[dphi < -pi] = dphi[dphi < -pi] + 2.*pi
     return dphi
