@@ -19,7 +19,6 @@ feature_labels = [
     'subleading_energy',
     'subleading_mt',
     'subleading_rt',
-    'subleading_rtnew',
     'subleading_msd',
     'subleading_axismajor',
     'subleading_axisminor',
@@ -32,7 +31,6 @@ feature_labels = [
     'leading_energy',
     'leading_mt',
     'leading_rt',
-    'leading_rtnew',
     'leading_msd',
     'leading_axismajor',
     'leading_axisminor',
@@ -40,6 +38,13 @@ feature_labels = [
     'leading_ecfN2b2',
     'leading_girth',
     'leading_ptd',
+    # More RT values
+    'leading_rtnew',
+    'leading_rt1',
+    'subleading_rtnew',
+    'subleading_rt1',
+    'rt2',
+    # Calculated features
     'subleading_tau21',
     'leading_tau21',
     'deltaeta',
@@ -50,6 +55,11 @@ def to_feature_array(arrays):
     """
     Transforms a dict-like arrays object to a flat numpy array for ML purposes
     """
+    # Add some RT branches
+    calculate_other_rts(arrays)
+    calculate_rt2(arrays)
+    calculate_other_rts(arrays, b'JetsAK15_subleading')
+    calculate_rt2(arrays, b'JetsAK15_subleading')
     # Simply direct variables from the arrays object
     plain_features = [
         b'MET',
@@ -58,7 +68,6 @@ def to_feature_array(arrays):
         b'JetsAK15_subleading.fCoordinates.fE',
         b'JetsAK15_subleading_MT',
         b'JetsAK15_subleading_RT',
-        b'JetsAK15_subleading_RTnew',
         b'JetsAK15_subleading_softDropMass',
         b'JetsAK15_subleading_axismajor',
         b'JetsAK15_subleading_axisminor',
@@ -71,7 +80,6 @@ def to_feature_array(arrays):
         b'JetsAK15_leading.fCoordinates.fE',
         b'JetsAK15_leading_MT',
         b'JetsAK15_leading_RT',
-        b'JetsAK15_leading_RTnew',
         b'JetsAK15_leading_softDropMass',
         b'JetsAK15_leading_axismajor',
         b'JetsAK15_leading_axisminor',
@@ -79,6 +87,12 @@ def to_feature_array(arrays):
         b'JetsAK15_leading_ecfN2b2',
         b'JetsAK15_leading_girth',
         b'JetsAK15_leading_ptD',
+        # 
+        b'JetsAK15_leading_RTnew',
+        b'JetsAK15_leading_RT1',
+        b'JetsAK15_subleading_RTnew',
+        b'JetsAK15_subleading_RT1',
+        b'JetsAK15_RT2'
         ]
     # Quantities that have to be calculated from branches
     calculated_features = [
@@ -92,9 +106,9 @@ def to_feature_array(arrays):
     plain = [ arrays[b].flatten() for b in plain_features ]
     for fn in calculated_features:
         plain.append(fn(arrays).flatten())
-    plain = np.array(plain)
+    plain = np.array(plain).T
     assert plain.shape[1] == len(plain_features) + len(calculated_features)
-    return plain.T
+    return plain
 
 # ------------------------
 # Event level
@@ -192,9 +206,9 @@ def filter_zerojet_events(arrays, inplace=True):
     return require_minimum_njets(arrays, 1, inplace)
 
 def require_minimum_njets(arrays, njets=1, inplace=True):
-    jets = get_jets(arrays, b'JetsAK15')
+    jets = get_jets(arrays, b'JetsAK15', has_subjets=False)
     passes = (jets.counts >= njets)
-    return select(arrays, passes, inplace)    
+    return select(arrays, passes, inplace)
 
 def is_nested(arrays):
     """
@@ -459,11 +473,25 @@ def calculate_mt(arrays, jets_branch=b'JetsAK15_leading'):
 
     mt = np.sqrt( (jetse + mete)**2 - (jetsx + metx)**2 - (jetsy + mety)**2 )
     rt = arrays[b'MET'] / mt
-    rtnew = arrays[b'MET'] / np.sqrt(mt**2 + jets.pt**2)
     arrays[add_to_bytestring(jets_branch, '_MT')] = mt
     arrays[add_to_bytestring(jets_branch, '_RT')] = rt
-    arrays[add_to_bytestring(jets_branch, '_RTnew')] = rtnew
-    
+
+# Alternative RT values    
+def calculate_other_rts(arrays, jets_branch=b'JetsAK15_leading'):
+    jets = Jets(jets_branch, arrays, has_subjets=False, has_substructure=False)
+    mt = arrays[add_to_bytestring(jets_branch, '_MT')]
+    arrays[add_to_bytestring(jets_branch, '_RTnew')] = arrays[b'MET'] / np.sqrt(mt**2 + jets.pt**2)
+    arrays[add_to_bytestring(jets_branch, '_RT1')] = np.sqrt(1 + arrays[b'MET'] / jets.pt)
+
+def calculate_rt2(arrays, leading_branch=b'JetsAK15_leading', subleading_branch=b'JetsAK15_subleading'):
+    """
+    Only works assuming events with njets<=1 are filtered out
+    """
+    leading_jets = Jets(b'JetsAK15_leading', arrays, has_subjets=False, has_substructure=False)
+    subleading_jets = Jets(b'JetsAK15_subleading', arrays, has_subjets=False, has_substructure=False)
+    arrays[b'JetsAK15_RT2'] = np.sqrt(leading_jets.pt / subleading_jets.pt)
+
+
 def calculate_deltaeta(arrays, leading_branch=b'JetsAK15_leading', subleading_branch=b'JetsAK15_subleading'):
     leading_jets = Jets(leading_branch, arrays, has_subjets=False, has_substructure=False)
     subleading_jets = Jets(subleading_branch, arrays, has_subjets=False, has_substructure=False)
