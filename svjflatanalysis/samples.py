@@ -415,7 +415,7 @@ def init_ttjets_test(**kwargs):
     return svjflatanalysis.dataset.BackgroundDataset('ttjets_testsample', rootfiles, **kwargs)
 
 
-features_data_path = '/Users/klijnsma/work/svj/flat/data/features_Dec02/'
+features_data_path = '/Users/klijnsma/work/svj/flat/data/features_Dec07/'
 
 def init_features(pattern, is_bkg=False):
     # Get list of unique names
@@ -430,10 +430,18 @@ def init_features(pattern, is_bkg=False):
     return datasets
 
 def init_bkg_features():
-    return init_features('Autumn18', is_bkg=True)
+    bkgs = init_features('Autumn18', is_bkg=True)
+    def bkgfilter(bkg):
+        if bkg.name == 'Autumn18.TTJets_TuneCP5_13TeV-madgraphMLM-pythia8':
+            return False
+        elif 'genmet' in bkg.name.lower():
+            return False
+        return True
+    bkgs = list(filter(bkgfilter, bkgs))
+    return bkgs
 
-def init_sig_features():
-    sigs = init_features('year', is_bkg=False)
+def init_sig_features(pattern='year2018'):
+    sigs = init_features(pattern, is_bkg=False)
     for sig in sigs:
         sig.xs = SIGNAL_CROSSSECTIONS[sig.mz()] * NOCUTS_TRIGGER_PLUS_JETPT550_EFF[sig.mz()]
     return sigs

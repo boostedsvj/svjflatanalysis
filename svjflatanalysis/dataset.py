@@ -331,12 +331,14 @@ class SignalDataset(SVJDataset):
         else:
             return r'$m_{{Z\prime}}={}$ GeV'.format(match.group(1))
 
-def get_bkg_xs(name):
+def get_bkg_xs(name, apply_trigger_eff=False):
     datasetname = name.split('.', 1)[1]
     if '_ext' in datasetname: datasetname = datasetname.split('_ext')[0]
     xs = svjflatanalysis.crosssections.get_xs(datasetname)
     if xs is None:
         raise RuntimeError('No cross section for {0}'.format(name))
+    if apply_trigger_eff:
+        xs *= svjflatanalysis.samples.NOCUTS_TRIGGER_PLUS_JETPT550_EFF_BKG[name]
     return xs
 
 class BackgroundDataset(SVJDataset):
@@ -379,19 +381,37 @@ class FeatureDataset():
             if '_batch' in npzf: npzf = npzf.split('_batch')[0]
             self.name = npzf
 
+    def __repr__(self):
+        return super().__repr__().replace('object', '{0} object'.format(self.name))
+
     def read(self):
         if len(self.npzfiles) == 0:
             logger.warning('No npz files for dataset %s', self.name)
         features = []
         for npzfile in self.npzfiles:
-            data = np.load(npzfile, allow_pickle=True)
+            try:
+                data = np.load(npzfile, allow_pickle=True)
+            except:
+                logger.error('Error loading %s - skipping', npzfile)
+                continue
             if self.labels is None: self.labels = data['labels']
             features.append(data['features'])
         self.features = np.concatenate(tuple(features))
+        if self.features.shape[0] == 0:
+            logger.error('Dataset %s has no events!', self)
+
+    def is_signal(self):
+        clsname = self.__class__.__name__.lower()
+        if 'sig' in clsname:
+            return True
+        elif 'bkg' in clsname:
+            return False
+        else:
+            raise AttributeError
 
 class FeatureDatasetBkg(FeatureDataset):
     def get_xs(self):
-        if not hasattr(self, 'xs'): self.xs = get_bkg_xs(self.name)
+        if not hasattr(self, 'xs'): self.xs = get_bkg_xs(self.name, apply_trigger_eff=True)
         return self.xs
 
     def get_category(self):
@@ -461,4 +481,25 @@ def build_feature_array(datasets, n=100, use_cache=True):
     X = np.concatenate(to_flatten).T
     y = np.concatenate(y)
     return X, y
+
+
+def weighted_feature_array(datasets, n=1000):
+    n_events_per_dataset = n_events_weighted_by_xs(n, datasets)
+    combined = []
+    labels = []
+    for dataset, n_this in zip(datasets, n_events_per_dataset):
+        if n_this == 0: continue
+        if n_this > dataset.features.shape[0]:
+            logger.error(
+                'Need {} events from {}, but only {} events available'
+                .format(n_this, dataset, dataset.features.shape[0])
+                )
+            n_this = dataset.features.shape[0]
+        combined.append(dataset.features[:n_this])
+        labels.append(np.ones(n_this) if dataset.is_signal() else np.zeros(n_this))
+    X = np.concatenate(combined)
+    y = np.concatenate(labels)
+    return X, y
+
+
 
